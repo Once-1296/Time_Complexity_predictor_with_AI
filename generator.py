@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 EQUATION_MAP = {
-    "O(1)": "np.ones_like(n)",
     "O(log n)": "np.log2(n)",
     "O(sqrt n)": "np.sqrt(n)",
     "O(n)": "n",
@@ -23,9 +22,6 @@ def generate_data(complexity, n_samples=100, max_n=1000, noise_factor=0.1):
     expr = EQUATION_MAP[complexity]
     base_time = eval(expr)
     base_time = base_time * (0.001 / np.max(base_time))
-
-    if complexity == "O(1)":
-        noise_factor = 0.02
 
     noise = np.random.normal(0, base_time * noise_factor, n_samples)
     time = base_time + np.abs(noise)

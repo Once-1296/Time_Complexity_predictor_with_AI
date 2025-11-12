@@ -2,13 +2,13 @@ import numpy as np
 import pandas as pd
 
 EQUATION_MAP = {
-    "O(log n)": "np.log2(n)",
-    "O(sqrt n)": "np.sqrt(n)",
-    "O(n)": "n",
-    "O(n log n)": "n * np.log2(n)",
-    "O(n sqrt n)": "n * np.sqrt(n)",
-    "O(n^2)": "n**2",
-    "O(n^3)": "n**3"
+    "O(log n)": "np.log2(n) * 0.002",
+    "O(sqrt n)": "np.sqrt(n) * 0.001",
+    "O(n)": "n * 0.0005",
+    "O(n log n)": "n * np.log2(n) * 0.00005",
+    "O(n sqrt n)": "n * np.sqrt(n) * 0.00002",
+    "O(n^2)": "(n**2) * 0.00001",
+    "O(n^3)": "(n**3) * 0.00000001"
 }
 
 def generate_data(complexity, n_samples=100, max_n=1000, noise_factor=0.1):
@@ -21,7 +21,6 @@ def generate_data(complexity, n_samples=100, max_n=1000, noise_factor=0.1):
     n = np.sort(np.random.randint(1, max_n + 1, n_samples))
     expr = EQUATION_MAP[complexity]
     base_time = eval(expr)
-    base_time = base_time * (0.001 / np.max(base_time))
 
     noise = np.random.normal(0, base_time * noise_factor, n_samples)
     time = base_time + np.abs(noise)

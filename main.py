@@ -34,7 +34,6 @@ def analyze_complexity(csv_file_path):
     time = df['Time'].values
 
     features = {
-        "O(1)": np.ones_like(n),
         "O(log n)": np.log2(n),
         "O(sqrt n)": np.sqrt(n),
         "O(n)": n,
@@ -53,16 +52,8 @@ def analyze_complexity(csv_file_path):
     # baseline constant model (predict mean)
     const_pred = np.full_like(time, np.mean(time), dtype=float)
     const_score = r2_score(time, const_pred)
-    scores["O(1)_baseline"] = const_score
-    predictions["O(1)_baseline"] = const_pred
 
     for key, feat in features.items():
-        if key == "O(1)":
-            # handle O(1) as baseline constant model
-            models[key] = None
-            predictions[key] = const_pred
-            scores[key] = const_score
-            continue
 
         feat = feat.reshape(-1, 1)
         # if feature has near-zero variance, skip fitting and mark as poor fit
@@ -85,11 +76,6 @@ def analyze_complexity(csv_file_path):
             predictions[key] = const_pred
             scores[key] = -np.inf
 
-    # remove the temporary baseline key before choosing best fit
-    if "O(1)_baseline" in scores:
-        _ = scores.pop("O(1)_baseline")
-        _ = predictions.pop("O(1)_baseline")
-
     best_fit = max(scores, key=scores.get)
     best_score = scores[best_fit]
 
@@ -99,21 +85,16 @@ def analyze_complexity(csv_file_path):
     print("----------------------------------------")
 
     R_SQUARED_THRESHOLD = 0.8
-    # if constant baseline explains most variance, and best non-constant is not better, call O(1)
-    if const_score >= best_score and const_score >= R_SQUARED_THRESHOLD:
-        print(f"\nPredicted Time Complexity: O(1) (baseline mean model, R^2: {const_score:.4f})")
+    if best_score < R_SQUARED_THRESHOLD:
+        print(f"\nPredicted Complexity: Non-polynomial or poor fit")
+        print(f"(Best model {best_fit} had R^2 = {best_score:.4f}, which is below the {R_SQUARED_THRESHOLD} threshold)")
     else:
-        if best_score < R_SQUARED_THRESHOLD:
-            print(f"\nPredicted Complexity: Non-polynomial or poor fit")
-            print(f"(Best model {best_fit} had R^2 = {best_score:.4f}, which is below the {R_SQUARED_THRESHOLD} threshold)")
-        else:
-            print(f"\nPredicted Time Complexity: {best_fit} (R^2: {best_score:.4f})")
+        print(f"\nPredicted Time Complexity: {best_fit} (R^2: {best_score:.4f})")
 
     plt.figure(figsize=(12, 7))
     plt.scatter(n, time, label='Actual Data', alpha=0.6)
 
     colors = {
-        "O(1)": "blue",
         "O(log n)": "purple",
         "O(sqrt n)": "cyan",
         "O(n)": "green",

@@ -35,7 +35,7 @@ def helper(lis_t, lis_n):
 def analyse_data(df):
     global DERIVATIVE_ITERATIONS
 
-    # 🔹 Randomly sample up to 100 rows from the dataframe
+    #  Randomly sample up to 100 rows from the dataframe
     df = df.sample(n=min(100, len(df)), random_state=42).reset_index(drop=True)
 
     lis_t = df['input_time'].tolist()
@@ -43,7 +43,7 @@ def analyse_data(df):
     derivative_features = []
     for _ in range(DERIVATIVE_ITERATIONS):
         derivatives, lis_t, lis_n = helper(lis_t, lis_n)
-        derivative_features.extend(derivatives)  # Flatten for ML
+        derivative_features.extend(derivatives)  
     return derivative_features
 
 
@@ -68,8 +68,7 @@ def load_data(folder_path):
         # Progress display
         print(f"\rProcessing data: {idx / total_files * 100:.1f}%", end="")
 
-    print()  # newline after progress
-    # Pad to same length for ML input
+    print()  
     max_len = max(len(x) for x in X)
     X_padded = np.array([x + [0] * (max_len - len(x)) for x in X])
     return X_padded, np.array(y)

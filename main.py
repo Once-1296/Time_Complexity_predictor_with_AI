@@ -8,12 +8,7 @@ import sys
 def analyze_complexity(csv_file_path):
     """
     Reads a CSV file with 'InputSize' and 'Time', plots the data,
-    and predicts the polynomial time complexity.
-    
-    Note: The prompt mentioned 'logistic regression', but that is a
-    classification algorithm. For fitting a curve to continuous data (time),
-    we use 'Linear Regression'. We can fit models like y = a*x, y = a*(x^2), etc.,
-    which are all forms of linear regression (linear in the coefficient 'a').
+    and predicts the best-fitting time complexity using linear regression.
     """
     try:
         df = pd.read_csv(csv_file_path)
@@ -35,16 +30,18 @@ def analyze_complexity(csv_file_path):
         print("Error: The CSV file has no data.")
         return
 
-    # Prepare data
-    # Reshape(-1, 1) is required by scikit-learn
-    n = df['InputSize'].values.reshape(-1, 1)
+    n = df['InputSize'].values
     time = df['Time'].values
 
-    # Create polynomial features
     features = {
-        'O(n)': n,
-        'O(n^2)': n**2,
-        'O(n^3)': n**3
+        "O(1)": np.ones_like(n),
+        "O(log n)": np.log2(n),
+        "O(sqrt n)": np.sqrt(n),
+        "O(n)": n,
+        "O(n log n)": n * np.log2(n),
+        "O(n sqrt n)": n * np.sqrt(n),
+        "O(n^2)": n**2,
+        "O(n^3)": n**3
     }
 
     models = {}
@@ -53,55 +50,86 @@ def analyze_complexity(csv_file_path):
 
     print("Analyzing data...")
 
-    # Fit a separate model for each complexity
-    for key, feat in features.items():
-        # Fit a LinearRegression model (e.g., time = a * n^2)
-        model = LinearRegression()
-        model.fit(feat, time)
-        
-        # Get predictions and R-squared score
-        pred = model.predict(feat)
-        score = r2_score(time, pred)
-        
-        models[key] = model
-        predictions[key] = pred
-        scores[key] = score
+    # baseline constant model (predict mean)
+    const_pred = np.full_like(time, np.mean(time), dtype=float)
+    const_score = r2_score(time, const_pred)
+    scores["O(1)_baseline"] = const_score
+    predictions["O(1)_baseline"] = const_pred
 
-    # Find the best fit based on the highest R-squared value
+    for key, feat in features.items():
+        if key == "O(1)":
+            # handle O(1) as baseline constant model
+            models[key] = None
+            predictions[key] = const_pred
+            scores[key] = const_score
+            continue
+
+        feat = feat.reshape(-1, 1)
+        # if feature has near-zero variance, skip fitting and mark as poor fit
+        if np.allclose(feat.flatten(), feat.flatten()[0]):
+            models[key] = None
+            predictions[key] = const_pred
+            scores[key] = -np.inf
+            continue
+
+        try:
+            model = LinearRegression()
+            model.fit(feat, time)
+            pred = model.predict(feat)
+            score = r2_score(time, pred)
+            models[key] = model
+            predictions[key] = pred
+            scores[key] = score
+        except Exception:
+            models[key] = None
+            predictions[key] = const_pred
+            scores[key] = -np.inf
+
+    # remove the temporary baseline key before choosing best fit
+    if "O(1)_baseline" in scores:
+        _ = scores.pop("O(1)_baseline")
+        _ = predictions.pop("O(1)_baseline")
+
     best_fit = max(scores, key=scores.get)
     best_score = scores[best_fit]
 
     print("\n--- Model Fit Analysis (R-squared) ---")
     for key, score in scores.items():
         print(f"{key}: {score:.4f}")
-    
     print("----------------------------------------")
-    
-    # Define a threshold for what we consider a "good fit"
+
     R_SQUARED_THRESHOLD = 0.8
-    
-    if best_score < R_SQUARED_THRESHOLD:
-        print(f"\nPredicted Complexity: Non-polynomial or poor fit")
-        print(f"(Best model {best_fit} had R^2 = {best_score:.4f}, which is below the {R_SQUARED_THRESHOLD} threshold)")
+    # if constant baseline explains most variance, and best non-constant is not better, call O(1)
+    if const_score >= best_score and const_score >= R_SQUARED_THRESHOLD:
+        print(f"\nPredicted Time Complexity: O(1) (baseline mean model, R^2: {const_score:.4f})")
     else:
-        print(f"\nPredicted Time Complexity: {best_fit} (R^2: {best_score:.4f})")
+        if best_score < R_SQUARED_THRESHOLD:
+            print(f"\nPredicted Complexity: Non-polynomial or poor fit")
+            print(f"(Best model {best_fit} had R^2 = {best_score:.4f}, which is below the {R_SQUARED_THRESHOLD} threshold)")
+        else:
+            print(f"\nPredicted Time Complexity: {best_fit} (R^2: {best_score:.4f})")
 
-
-    # Plotting
     plt.figure(figsize=(12, 7))
     plt.scatter(n, time, label='Actual Data', alpha=0.6)
-    
-    # Plot all regression lines for comparison
-    colors = {'O(n)': 'green', 'O(n^2)': 'orange', 'O(n^3)': 'red'}
-    
-    # Sort data for clean plotting of lines
-    sort_indices = n.flatten().argsort()
+
+    colors = {
+        "O(1)": "blue",
+        "O(log n)": "purple",
+        "O(sqrt n)": "cyan",
+        "O(n)": "green",
+        "O(n log n)": "orange",
+        "O(n sqrt n)": "brown",
+        "O(n^2)": "red",
+        "O(n^3)": "magenta"
+    }
+
+    sort_indices = n.argsort()
     n_sorted = n[sort_indices]
-    
+
     for key, pred in predictions.items():
         pred_sorted = pred[sort_indices]
-        label = f"{key} Fit (R^2={scores[key]:.4f})"
-        plt.plot(n_sorted, pred_sorted, label=label, color=colors[key], linewidth=2)
+        label = f"{key} Fit (R^2={scores.get(key, float('nan')):.4f})"
+        plt.plot(n_sorted, pred_sorted, label=label, color=colors.get(key, "black"), linewidth=2)
 
     plt.xlabel('Input Size (n)')
     plt.ylabel('Execution Time (s)')
@@ -114,6 +142,5 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python analyze_complexity.py <path_to_csv_file>")
         sys.exit(1)
-        
     csv_file = sys.argv[1]
     analyze_complexity(csv_file)

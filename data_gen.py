@@ -4,7 +4,6 @@ ID = 0
 from sympy import symbols, sqrt, log, factorial, sympify
 
 
-# Define the variable
 x = symbols('x')
 
 
@@ -30,23 +29,17 @@ def evaluate_equation(equation_key: str, x_value: float):
    for the given x_value. Returns result as float rounded to 3 decimals.
    """
    try:
-       # Check if key exists
        if equation_key not in MAP_EXTRA_EQUATIONS:
            raise KeyError(f"Equation '{equation_key}' not found in MAP_EXTRA_EQUATIONS.")
       
-       # Get equation string
        equation_str = MAP_EXTRA_EQUATIONS[equation_key]
       
-       # Convert 'log2' to Sympy format 'log(x, 2)'
        safe_expr = equation_str.replace("log2(x)", "log(x, 2)")
       
-       # Convert string to sympy expression
        expr = sympify(safe_expr, locals={"x": x, "sqrt": sqrt, "log": log, "factorial": factorial})
       
-       # Substitute and evaluate
        result = expr.subs(x, x_value).evalf()
       
-       # Return as float rounded to 3 decimals
        return round(float(result), 3)
   
    except Exception as e:
@@ -57,7 +50,6 @@ def ret_val(degrees,x):
    val = 0
    for element in degrees:
        coeff, power = element[0],element[1]
-       # print(f"{coeff},{power}")
        val += coeff*(pow(x,power))
    return val
 def create_polynomial_data(degrees):
@@ -74,7 +66,6 @@ def create_polynomial_data(degrees):
    power = -1
    for element in degrees:
        coeff,pwr = element[0],element[1]
-       # print(f"{coeff},{pwr}")
        if coeff != 0:
            power = pwr
            break
@@ -83,9 +74,7 @@ def create_polynomial_data(degrees):
 def gen_eqn(curr_deg, lis_so_far):
    global ID
    if curr_deg == -1:
-       #print(lis_so_far)
        data = create_polynomial_data(lis_so_far)
-       #print(data)
        if data is not None:
            data_to_save = pd.DataFrame(data)
            data_to_save.to_csv(f"train/train_{ID}.csv",index = False)
@@ -121,7 +110,7 @@ def make_non_lin_dat():
        id+=1
           
 def main():
-   #gen_eqn(4,[])
+   gen_eqn(4,[])
    make_non_lin_dat()
   
 if __name__ == "__main__":
